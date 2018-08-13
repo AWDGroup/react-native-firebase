@@ -18,6 +18,7 @@ class RNFirebaseAdMobUtils {
 
   /**
    * Convert common AdMob errors into a standard format
+   *
    * @param errorCode
    * @return
    */
@@ -27,11 +28,17 @@ class RNFirebaseAdMobUtils {
     switch (errorCode) {
       case AdRequest.ERROR_CODE_INTERNAL_ERROR:
         map.putString("code", "admob/error-code-internal-error");
-        map.putString("message", "Something happened internally; for instance, an invalid response was received from the ad server.");
+        map.putString(
+          "message",
+          "Something happened internally; for instance, an invalid response was received from the ad server."
+        );
         break;
       case AdRequest.ERROR_CODE_INVALID_REQUEST:
         map.putString("code", "admob/error-code-invalid-request");
-        map.putString("message", "The ad request was invalid; for instance, the ad unit ID was incorrect.");
+        map.putString(
+          "message",
+          "The ad request was invalid; for instance, the ad unit ID was incorrect."
+        );
         break;
       case AdRequest.ERROR_CODE_NETWORK_ERROR:
         map.putString("code", "admob/error-code-network-error");
@@ -39,7 +46,10 @@ class RNFirebaseAdMobUtils {
         break;
       case AdRequest.ERROR_CODE_NO_FILL:
         map.putString("code", "admob/error-code-no-fill");
-        map.putString("message", "The ad request was successful, but no ad was returned due to lack of ad inventory.");
+        map.putString(
+          "message",
+          "The ad request was successful, but no ad was returned due to lack of ad inventory."
+        );
         break;
     }
 
@@ -58,7 +68,7 @@ class RNFirebaseAdMobUtils {
     }
 
     if (request.hasKey("contentUrl")) {
-      requestBuilder.setContentUrl(request.getString("setContentUrl"));
+      requestBuilder.setContentUrl(request.getString("contentUrl"));
     }
 
     if (request.hasKey("requestAgent")) {
@@ -114,6 +124,7 @@ class RNFirebaseAdMobUtils {
 
   /**
    * Map the size prop to the AdSize
+   *
    * @param value
    * @return
    */
@@ -143,7 +154,7 @@ class RNFirebaseAdMobUtils {
       case "SMART_BANNER":
         return AdSize.SMART_BANNER;
       case "SMART_BANNER_LANDSCAPE":
-        return AdSize.SMART_BANNER;		
+        return AdSize.SMART_BANNER;
     }
   }
 }

@@ -29,9 +29,22 @@ static NSMutableDictionary *_listeners;
     return self;
 }
 
-- (void)get:(RCTPromiseResolveBlock) resolve
+- (void)get:(NSDictionary *) getOptions
+   resolver:(RCTPromiseResolveBlock) resolve
    rejecter:(RCTPromiseRejectBlock) reject {
-    [_query getDocumentsWithCompletion:^(FIRQuerySnapshot * _Nullable snapshot, NSError * _Nullable error) {
+    FIRFirestoreSource source;
+    if (getOptions && getOptions[@"source"]) {
+        if ([getOptions[@"source"] isEqualToString:@"server"]) {
+            source = FIRFirestoreSourceServer;
+        } else if ([getOptions[@"source"] isEqualToString:@"cache"]) {
+            source = FIRFirestoreSourceCache;
+        } else {
+            source = FIRFirestoreSourceDefault;
+        }
+    } else {
+        source = FIRFirestoreSourceDefault;
+    }
+    [_query getDocumentsWithSource:source completion:^(FIRQuerySnapshot * _Nullable snapshot, NSError * _Nullable error) {
         if (error) {
             [RNFirebaseFirestore promiseRejectException:reject error:error];
         } else {
@@ -65,17 +78,14 @@ queryListenOptions:(NSDictionary *) queryListenOptions {
             }
         };
 
-        FIRQueryListenOptions *options = [[FIRQueryListenOptions alloc] init];
-        if (queryListenOptions) {
-            if (queryListenOptions[@"includeDocumentMetadataChanges"]) {
-                [options includeDocumentMetadataChanges:TRUE];
-            }
-            if (queryListenOptions[@"includeQueryMetadataChanges"]) {
-                [options includeQueryMetadataChanges:TRUE];
-            }
+        bool includeMetadataChanges;
+        if (queryListenOptions && queryListenOptions[@"includeMetadataChanges"]) {
+            includeMetadataChanges = true;
+        } else {
+            includeMetadataChanges = false;
         }
 
-        id<FIRListenerRegistration> listener = [_query addSnapshotListenerWithOptions:options listener:listenerBlock];
+        id<FIRListenerRegistration> listener = [_query addSnapshotListenerWithIncludeMetadataChanges:includeMetadataChanges listener:listenerBlock];
         _listeners[listenerId] = listener;
     }
 }
@@ -93,21 +103,39 @@ queryListenOptions:(NSDictionary *) queryListenOptions {
 - (FIRQuery *)applyFilters:(FIRFirestore *) firestore
                      query:(FIRQuery *) query {
     for (NSDictionary *filter in _filters) {
-        NSString *fieldPath = filter[@"fieldPath"];
+        NSDictionary *fieldPathDictionary = filter[@"fieldPath"];
+        NSString *fieldPathType = fieldPathDictionary[@"type"];
         NSString *operator = filter[@"operator"];
         NSDictionary *jsValue = filter[@"value"];
         id value = [RNFirebaseFirestoreDocumentReference parseJSTypeMap:firestore jsTypeMap:jsValue];
 
-        if ([operator isEqualToString:@"EQUAL"]) {
-            query = [query queryWhereField:fieldPath isEqualTo:value];
-        } else if ([operator isEqualToString:@"GREATER_THAN"]) {
-            query = [query queryWhereField:fieldPath isGreaterThan:value];
-        } else if ([operator isEqualToString:@"GREATER_THAN_OR_EQUAL"]) {
-            query = [query queryWhereField:fieldPath isGreaterThanOrEqualTo:value];
-        } else if ([operator isEqualToString:@"LESS_THAN"]) {
-            query = [query queryWhereField:fieldPath isLessThan:value];
-        } else if ([operator isEqualToString:@"LESS_THAN_OR_EQUAL"]) {
-            query = [query queryWhereField:fieldPath isLessThanOrEqualTo:value];
+        if ([fieldPathType isEqualToString:@"string"]) {
+            NSString *fieldPath = fieldPathDictionary[@"string"];
+            if ([operator isEqualToString:@"EQUAL"]) {
+                query = [query queryWhereField:fieldPath isEqualTo:value];
+            } else if ([operator isEqualToString:@"GREATER_THAN"]) {
+                query = [query queryWhereField:fieldPath isGreaterThan:value];
+            } else if ([operator isEqualToString:@"GREATER_THAN_OR_EQUAL"]) {
+                query = [query queryWhereField:fieldPath isGreaterThanOrEqualTo:value];
+            } else if ([operator isEqualToString:@"LESS_THAN"]) {
+                query = [query queryWhereField:fieldPath isLessThan:value];
+            } else if ([operator isEqualToString:@"LESS_THAN_OR_EQUAL"]) {
+                query = [query queryWhereField:fieldPath isLessThanOrEqualTo:value];
+            }
+        } else {
+            NSArray *fieldPathElements = fieldPathDictionary[@"elements"];
+            FIRFieldPath *fieldPath = [[FIRFieldPath alloc] initWithFields:fieldPathElements];
+            if ([operator isEqualToString:@"EQUAL"]) {
+                query = [query queryWhereFieldPath:fieldPath isEqualTo:value];
+            } else if ([operator isEqualToString:@"GREATER_THAN"]) {
+                query = [query queryWhereFieldPath:fieldPath isGreaterThan:value];
+            } else if ([operator isEqualToString:@"GREATER_THAN_OR_EQUAL"]) {
+                query = [query queryWhereFieldPath:fieldPath isGreaterThanOrEqualTo:value];
+            } else if ([operator isEqualToString:@"LESS_THAN"]) {
+                query = [query queryWhereFieldPath:fieldPath isLessThan:value];
+            } else if ([operator isEqualToString:@"LESS_THAN_OR_EQUAL"]) {
+                query = [query queryWhereFieldPath:fieldPath isLessThanOrEqualTo:value];
+            }
         }
     }
     return query;
@@ -116,9 +144,17 @@ queryListenOptions:(NSDictionary *) queryListenOptions {
 - (FIRQuery *)applyOrders:(FIRQuery *) query {
     for (NSDictionary *order in _orders) {
         NSString *direction = order[@"direction"];
-        NSString *fieldPath = order[@"fieldPath"];
+        NSDictionary *fieldPathDictionary = order[@"fieldPath"];
+        NSString *fieldPathType = fieldPathDictionary[@"type"];
 
-        query = [query queryOrderedByField:fieldPath descending:([direction isEqualToString:@"DESCENDING"])];
+        if ([fieldPathType isEqualToString:@"string"]) {
+            NSString *fieldPath = fieldPathDictionary[@"string"];
+            query = [query queryOrderedByField:fieldPath descending:([direction isEqualToString:@"DESCENDING"])];
+        } else {
+            NSArray *fieldPathElements = fieldPathDictionary[@"elements"];
+            FIRFieldPath *fieldPath = [[FIRFieldPath alloc] initWithFields:fieldPathElements];
+            query = [query queryOrderedByFieldPath:fieldPath descending:([direction isEqualToString:@"DESCENDING"])];
+        }
     }
     return query;
 }

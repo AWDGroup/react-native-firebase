@@ -19,6 +19,16 @@ NSString *convertFIRRemoteConfigFetchStatusToNSString(FIRRemoteConfigFetchStatus
     }
 }
 
+NSString *convertFIRRemoteConfigFetchStatusToNSStringDescription(FIRRemoteConfigFetchStatus value) {
+    switch (value) {
+        case FIRRemoteConfigFetchStatusThrottled:
+            return @"fetch() operation cannot be completed successfully, due to throttling.";
+        case FIRRemoteConfigFetchStatusNoFetchYet:
+        default:
+            return @"fetch() operation cannot be completed successfully.";
+    }
+}
+
 NSString *convertFIRRemoteConfigSourceToNSString(FIRRemoteConfigSource value) {
     switch (value) {
         case FIRRemoteConfigSourceDefault:
@@ -49,10 +59,9 @@ RCT_EXPORT_METHOD(fetch:
             (RCTPromiseRejectBlock) reject) {
     [[FIRRemoteConfig remoteConfig] fetchWithCompletionHandler:^(FIRRemoteConfigFetchStatus status, NSError *__nullable error) {
         if (error) {
-            RCTLogError(@"\nError: %@", RCTJSErrorFromNSError(error));
-            reject(convertFIRRemoteConfigFetchStatusToNSString(status), error.localizedDescription, error);
+            reject(convertFIRRemoteConfigFetchStatusToNSString(status), convertFIRRemoteConfigFetchStatusToNSStringDescription(status), error);
         } else {
-            resolve(convertFIRRemoteConfigFetchStatusToNSString(status));
+            resolve([NSNull null]);
         }
     }];
 }
@@ -64,10 +73,9 @@ RCT_EXPORT_METHOD(fetchWithExpirationDuration:
         rejecter:(RCTPromiseRejectBlock)reject) {
     [[FIRRemoteConfig remoteConfig] fetchWithExpirationDuration:expirationDuration.doubleValue completionHandler:^(FIRRemoteConfigFetchStatus status, NSError *__nullable error) {
         if (error) {
-            RCTLogError(@"\nError: %@", RCTJSErrorFromNSError(error));
-            reject(convertFIRRemoteConfigFetchStatusToNSString(status), error.localizedDescription, error);
+            reject(convertFIRRemoteConfigFetchStatusToNSString(status), convertFIRRemoteConfigFetchStatusToNSStringDescription(status), error);
         } else {
-            resolve(convertFIRRemoteConfigFetchStatusToNSString(status));
+            resolve([NSNull null]);
         }
     }];
 }

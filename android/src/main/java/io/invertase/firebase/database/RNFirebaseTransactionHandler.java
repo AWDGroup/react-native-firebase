@@ -19,20 +19,21 @@ import javax.annotation.Nullable;
 import io.invertase.firebase.Utils;
 
 public class RNFirebaseTransactionHandler {
-  private int transactionId;
-  private String appName;
   private final ReentrantLock lock;
   private final Condition condition;
-  private Map<String, Object> data;
-  private boolean signalled;
-
   public Object value;
   boolean interrupted;
   boolean abort = false;
   boolean timeout = false;
+  private int transactionId;
+  private String appName;
+  private String dbURL;
+  private Map<String, Object> data;
+  private boolean signalled;
 
-  RNFirebaseTransactionHandler(int id, String app) {
+  RNFirebaseTransactionHandler(int id, String app, String url) {
     appName = app;
+    dbURL = url;
     transactionId = id;
     lock = new ReentrantLock();
     condition = lock.newCondition();
@@ -107,11 +108,12 @@ public class RNFirebaseTransactionHandler {
 
     // all events get distributed js side based on app name
     updatesMap.putString("appName", appName);
+    updatesMap.putString("dbURL", dbURL);
 
     if (!updatesData.hasChildren()) {
       Utils.mapPutValue("value", updatesData.getValue(), updatesMap);
     } else {
-      Object value = Utils.castValue(updatesData);
+      Object value = RNFirebaseDatabaseUtils.castValue(updatesData);
 
       if (value instanceof WritableNativeArray) {
         updatesMap.putArray("value", (WritableArray) value);
@@ -124,11 +126,16 @@ public class RNFirebaseTransactionHandler {
   }
 
 
-  WritableMap createResultMap(@Nullable DatabaseError error, boolean committed, DataSnapshot snapshot) {
+  WritableMap createResultMap(
+    @Nullable DatabaseError error,
+    boolean committed,
+    DataSnapshot snapshot
+  ) {
     WritableMap resultMap = Arguments.createMap();
 
     resultMap.putInt("id", transactionId);
     resultMap.putString("appName", appName);
+    resultMap.putString("dbURL", dbURL);
 
     resultMap.putBoolean("timeout", timeout);
     resultMap.putBoolean("committed", committed);
@@ -140,12 +147,15 @@ public class RNFirebaseTransactionHandler {
       if (error == null && timeout) {
         WritableMap timeoutError = Arguments.createMap();
         timeoutError.putString("code", "DATABASE/INTERNAL-TIMEOUT");
-        timeoutError.putString("message", "A timeout occurred whilst waiting for RN JS thread to send transaction updates.");
+        timeoutError.putString(
+          "message",
+          "A timeout occurred whilst waiting for RN JS thread to send transaction updates."
+        );
         resultMap.putMap("error", timeoutError);
       }
     } else {
       resultMap.putString("type", "complete");
-      resultMap.putMap("snapshot", Utils.snapshotToMap(snapshot));
+      resultMap.putMap("snapshot", RNFirebaseDatabaseUtils.snapshotToMap(snapshot));
     }
 
     return resultMap;

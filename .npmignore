@@ -1,4 +1,7 @@
 node_modules
+coverage.android.json
+coverage.ios.json
+coverage
 npm-debug.log
 *.DS_Store
 .github
@@ -12,7 +15,7 @@ project.xcworkspace/
 xcuserdata/
 
 # Config files
-.babelrc
+# .babelrc
 .editorconfig
 .eslintrc
 .flowconfig
@@ -71,8 +74,17 @@ docs
 coverage
 yarn.lock
 tests
-lib/.watchmanconfig
+bridge/
 buddybuild_postclone.sh
 bin/test.js
 .github
 example
+codorials
+.vscode
+.nyc_output
+React-Native-Firebase.svg
+CONTRIBUTING.md
+CODE_OF_CONDUCT.md
+android/.settings
+README.md
+src
